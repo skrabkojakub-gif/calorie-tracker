@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FitTracker PWA</title>
+  <meta name="theme-color" content="#121212">
+  <style>
+    :root {
+      --bg: #121212;
+      --card-bg: #1e1e1e;
+      --text: #ffffff;
+      --subtext: #a0a0a0;
+      --accent-cal: #00FF66;
+      --accent-pro: #00E5FF;
+      --border: #2a2a2a;
+    }
+
+    [data-theme="matrix"] {
+      --bg: #0a0a0a;
+      --card-bg: #141414;
+      --text: #f0f0f0;
+      --subtext: #888888;
+      --accent-cal: #FF6B00;
+      --accent-pro: #e0e0e0;
+      --border: #262626;
+    }
+
+    [data-theme="clean"] {
+      --bg: #f4f6f8;
+      --card-bg: #ffffff;
+      --text: #1a1d20;
+      --subtext: #6c757d;
+      --accent-cal: #FF5A5F;
+      --accent-pro: #5B5FC7;
+      --border: #e2e8f0;
+    }
+
+    [data-theme="game"] {
+      --bg: #0F172A;
+      --card-bg: #1E293B;
+      --text: #F8FAFC;
+      --subtext: #94A3B8;
+      --accent-cal: #EAB308;
+      --accent-pro: #14B8A6;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding-bottom: 30px; transition: background 0.3s, color 0.3s; }
+
+    header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: var(--card-bg); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+    .logo { font-weight: bold; font-size: 1.2rem; }
+    .theme-selector select { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 5px 10px; border-radius: 8px; cursor: pointer; }
+
+    .container { max-width: 600px; margin: 0 auto; padding: 15px; }
+
+    .goals-card { background: var(--card-bg); border-radius: 16px; padding: 20px; border: 1px solid var(--border); margin-bottom: 20px; }
+    .goals-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .btn-small { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
+
+    .progress-group { display: flex; flex-direction: column; gap: 15px; }
+    .progress-item { display: flex; flex-direction: column; gap: 5px; }
+    .progress-labels { display: flex; justify-content: space-between; font-size: 0.9rem; }
+    .bar-bg { width: 100%; height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; }
+    .bar-fill-cal { height: 100%; background: var(--accent-cal); transition: width 0.3s; }
+    .bar-fill-pro { height: 100%; background: var(--accent-pro); transition: width 0.3s; }
+
+    .meal-section { background: var(--card-bg); border-radius: 16px; padding: 15px; border: 1px solid var(--border); margin-bottom: 15px; }
+    .meal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .meal-title { font-size: 1.1rem; font-weight: 600; }
+    .meal-stats { font-size: 0.85rem; color: var(--subtext); }
+
+    .meal-items { list-style: none; margin-bottom: 10px; }
+    .meal-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+    .meal-item:last-child { border-bottom: none; }
+    .remove-btn { color: #ff4d4d; background: none; border: none; cursor: pointer; font-size: 1.1rem; margin-left: 10px; }
+
+    .meal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-add { background: var(--accent-cal); color: #000; font-weight: bold; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; flex: 1; }
+    .btn-protein { background: var(--accent-pro); color: #000; font-weight: bold; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
+
+    /* Modal */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; }
+    .modal-content { background: var(--card-bg); width: 90%; max-width: 500px; max-height: 85vh; border-radius: 16px; padding: 20px; overflow-y: auto; border: 1px solid var(--border); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .close-btn { background: none; border: none; color: var(--text); font-size: 1.5rem; cursor: pointer; }
+
+    .tabs { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+    .tab-btn { background: none; border: none; color: var(--subtext); font-weight: bold; cursor: pointer; padding: 5px 10px; }
+    .tab-btn.active { color: var(--text); border-bottom: 2px solid var(--accent-cal); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.85rem; margin-bottom: 5px; color: var(--subtext); }
+    .form-group input, .form-group select { width: 100%; padding: 10px; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 8px; }
+
+    .db-list { list-style: none; max-height: 250px; overflow-y: auto; }
+    .db-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--border); cursor: pointer; }
+    .db-item:hover { background: var(--bg); }
+    .fav-star { cursor: pointer; color: var(--subtext); margin-right: 8px; font-size: 1.1rem; }
+    .fav-star.active { color: #EAB308; }
+  </style>
+</head>
+<body data-theme="ring">
+
+  <header>
+    <div class="logo">FitTracker PWA</div>
+    <div class="theme-selector">
+      <select id="themeSelect" onchange="changeTheme(this.value)">
+        <option value="ring">Ring (Minimal)</option>
+        <option value="matrix">Matrix (Fit-Pro)</option>
+        <option value="clean">Clean (SaaS)</option>
+        <option value="game">Game (Streak)</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="goals-card">
+      <div class="goals-header">
+        <h2>Denní Přehled</h2>
+        <button class="btn-small" onclick="openGoalsModal()">Upravit Cíle</button>
+      </div>
+      <div class="progress-group">
+        <div class="progress-item">
+          <div class="progress-labels">
+            <span>Kalorie</span>
+            <span id="calLabel">0 / 2000 kcal</span>
+          </div>
+          <div class="bar-bg"><div id="calBar" class="bar-fill-cal" style="width: 0%"></div></div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-labels">
+            <span>Bílkoviny</span>
+            <span id="proLabel">0 / 150 g</span>
+          </div>
+          <div class="bar-bg"><div id="proBar" class="bar-fill-pro" style="width: 0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="mealsContainer"></div>
+  </div>
+
+  <!-- Modal Přidání Jídla -->
+  <div id="addModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalMealTitle">Přidat Jídlo</h3>
+        <button class="close-btn" onclick="closeModal('addModal')">&times;</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(event, 'dbTab')">Databáze</button>
+        <button class="tab-btn" onclick="switchTab(event, 'favTab')">Moje / Recepty</button>
+        <button class="tab-btn" onclick="switchTab(event, 'customTab')">Vlastní</button>
+      </div>
+
+      <!-- Záložka Databáze -->
+      <div id="dbTab" class="tab-content active">
+        <div class="form-group">
+          <input type="text" id="searchInput" placeholder="Hledat potravinu..." oninput="filterDB()">
+        </div>
+        <ul id="dbList" class="db-list"></ul>
+      </div>
+
+      <!-- Záložka Oblíbené & Recepty -->
+      <div id="favTab" class="tab-content">
+        <h4>Uložené Recepty & Oblíbené</h4>
+        <ul id="favList" class="db-list" style="margin-bottom:15px;"></ul>
+        <hr style="border-color:var(--border); margin:10px 0;">
+        <h4>Vytvořit Složený Recept</h4>
+        <div class="form-group" style="margin-top:10px;">
+          <input type="text" id="recipeName" placeholder="Název receptu (např. Proteinová Kaše)">
+        </div>
+        <div class="form-group">
+          <input type="number" id="recipeCal" placeholder="Celkem Kalorie (kcal)">
+        </div>
+        <div class="form-group">
+          <input type="number" id="recipePro" placeholder="Celkem Bílkoviny (g)">
+        </div>
+        <button class="btn-add" style="width:100%" onclick="saveRecipe()">Uložit Nový Recept</button>
+      </div>
+
+      <!-- Záložka Vlastní Jídlo -->
+      <div id="customTab" class="tab-content">
+        <div class="form-group"><label>Název</label><input type="text" id="customName"></div>
+        <div class="form-group"><label>Jednotka</label>
+          <select id="customUnit"><option value="g">Gramy (g)</option><option value="ks">Kusy (ks)</option></select>
+        </div>
+        <div class="form-group"><label>Množství</label><input type="number" id="customAmount" value="100"></div>
+        <div class="form-group"><label>Kalorie (kcal)</label><input type="number" id="customCal"></div>
+        <div class="form-group"><label>Bílkoviny (g)</label><input type="number" id="customPro"></div>
+        <button class="btn-add" style="width: 100%; margin-top:10px;" onclick="addCustomFood()">Přidat do Jídla</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal Množství -->
+  <div id="amountModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="selectedFoodName">Množství</h3>
+        <button class="close-btn" onclick="closeModal('amountModal')">&times;</button>
+      </div>
+      <div class="form-group">
+        <label id="amountLabel">Zadejte množství</label>
+        <input type="number" id="foodAmountInput" value="100">
+      </div>
+      <button class="btn-add" style="width: 100%; margin-top:10px;" onclick="confirmAddFood()">Potvrdit a Přidat</button>
+    </div>
+  </div>
+
+  <!-- Modal Cíle -->
+  <div id="goalsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Nastavení Cílů</h3>
+        <button class="close-btn" onclick="closeModal('goalsModal')">&times;</button>
+      </div>
+      <div class="form-group"><label>Cílové Kalorie (kcal)</label><input type="number" id="targetCalInput"></div>
+      <div class="form-group"><label>Cílové Bílkoviny (g)</label><input type="number" id="targetProInput"></div>
+      <button class="btn-add" style="width: 100%; margin-top:10px;" onclick="saveGoals()">Uložit Cíle</button>
+    </div>
+  </div>
+
+  <script>
+    const defaultDB = [
+      { id: 1, name: 'Kuřecí prsa', cal: 165, pro: 31, unit: 'g', base: 100 },
+      { id: 2, name: 'Rýže vařená', cal: 130, pro: 2.7, unit: 'g', base: 100 },
+      { id: 3, name: 'Vejce (vel. M)', cal: 70, pro: 6, unit: 'ks', base: 1 },
+      { id: 4, name: 'Tvaroh odtučněný', cal: 68, pro: 12, unit: 'g', base: 100 },
+      { id: 5, name: 'Ovesné vločky', cal: 370, pro: 13, unit: 'g', base: 100 },
+      { id: 6, name: 'Banán', cal: 89, pro: 1.1, unit: 'ks', base: 1 }
+    ];
+
+    let state = {
+      theme: 'ring',
+      goals: { cal: 2000, pro: 150 },
+      meals: {
+        'Snídaně': [],
+        'Oběd': [],
+        'Večeře': [],
+        'Svačiny': []
+      },
+      favorites: [],
+      recipes: []
+    };
+
+    let activeMealKey = '';
+    let selectedFood = null;
+
+    function init() {
+      const saved = localStorage.getItem('fitTrackerData');
+      if (saved) {
+        try { state = JSON.parse(saved); } catch(e){}
+      }
+      document.body.setAttribute('data-theme', state.theme);
+      document.getElementById('themeSelect').value = state.theme;
+      render();
+    }
+
+    function saveState() {
+      localStorage.setItem('fitTrackerData', JSON.stringify(state));
+      render();
+    }
+
+    function changeTheme(theme) {
+      state.theme = theme;
+      document.body.setAttribute('data-theme', theme);
+      saveState();
+    }
+
+    function render() {
+      let totCal = 0, totPro = 0;
+      Object.keys(state.meals).forEach(key => {
+        state.meals[key].forEach(item => {
+          totCal += item.cal;
+          totPro += item.pro;
+        });
+      });
+
+      document.getElementById('calLabel').innerText = `${Math.round(totCal)} /${state.goals.cal} kcal`;
+      document.getElementById('proLabel').innerText = `${Math.round(totPro)} /${state.goals.pro} g`;
+      
+      const calPercent = Math.min((totCal / state.goals.cal) * 100, 100);
+      const proPercent = Math.min((totPro / state.goals.pro) * 100, 100);
+      
+      document.getElementById('calBar').style.width = calPercent + '%';
+      document.getElementById('proBar').style.width = proPercent + '%';
+
+      const container = document.getElementById('mealsContainer');
+      container.innerHTML = '';
+
+      Object.keys(state.meals).forEach(mealName => {
+        const items = state.meals[mealName];
+        let mCal = 0, mPro = 0;
+        items.forEach(i => { mCal += i.cal; mPro += i.pro; });
+
+        const section = document.createElement('div');
+        section.className = 'meal-section';
+        section.innerHTML = `
+          <div class="meal-header">
+            <span class="meal-title">${mealName}</span>
+            <span class="meal-stats">${Math.round(mCal)} kcal \vert{}${Math.round(mPro)}g protein</span>
+          </div>
+          <ul class="meal-items">
+            ${items.map((item, idx) => `
+              <li class="meal-item">
+                <span>${item.name} (${item.amount}${item.unit})</span>
+                <div>
+                  <span>${Math.round(item.cal)} kcal / ${Math.round(item.pro)}g P</span>
+                  <button class="remove-btn" onclick="removeItem('${mealName}', ${idx})">&times;</button>
+                </div>
+              </li>
+            `).join('')}
+          </ul>
+          <div class="meal-actions">
+            <button class="btn-add" onclick="openAddModal('${mealName}')">+ Přidat jídlo</button>
+            <button class
